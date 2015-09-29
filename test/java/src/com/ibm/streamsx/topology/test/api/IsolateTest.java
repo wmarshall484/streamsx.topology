@@ -105,13 +105,13 @@ public class IsolateTest extends TestTopology {
         TStream<String> ss7 = ss3.transform(getContainerId());
         
         Set<TStream<String>> set = new HashSet<>();
-        set.add(ss1);
-        set.add(ss8);
+        set.add(ss1.isolate());
+        set.add(ss8.isolate());
         set.add(ss3);
         set.add(ss4);
         set.add(ss5);
         
-        TStream<String> out = ss7.union(set).transform(uniqueStringCounter(6));
+        TStream<String> out = ss7.isolate().union(set).transform(uniqueStringCounter(6));
         
         Tester tester = topology.getTester();
         Condition<Long> numIsolateRegions =tester.tupleCount(out, 6);
@@ -169,9 +169,9 @@ public class IsolateTest extends TestTopology {
         TStream<String> ss2 = topology.strings("hello");
         TStream<String> out2 = ss2.transform(getContainerId());
         Set<TStream<String>> set = new HashSet<>();
-        set.add(out3);
-        set.add(out2);
-        TStream<String> regionCount = out1.union(set).transform(uniqueStringCounter(3));
+        set.add(out3.isolate());
+        set.add(out2.isolate());
+        TStream<String> regionCount = out1.isolate().union(set).transform(uniqueStringCounter(3));
         
         Tester tester = topology.getTester();
         Condition<Long> expectedCount = tester.tupleCount(regionCount, 3);
@@ -203,11 +203,11 @@ public class IsolateTest extends TestTopology {
         TStream<String> out2 = n.filter(new AllowAll<String>());
         TStream<String> out3 = n.filter(new AllowAll<String>());
         TStream<String> out4 = n.filter(new AllowAll<String>());
-        outSet.add(out2);
-        outSet.add(out3);
-        outSet.add(out4);
+        outSet.add(out2.isolate());
+        outSet.add(out3.isolate());
+        outSet.add(out4.isolate());
         
-        TStream<String> out_total = s1.union(outSet);
+        TStream<String> out_total = s1.isolate().union(outSet);
 
         Tester tester = topology.getTester();
         Condition<Long> expectedCounts1 = tester.tupleCount(out1, 4);
