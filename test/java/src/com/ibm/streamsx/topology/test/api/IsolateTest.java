@@ -23,6 +23,7 @@ import com.ibm.streamsx.topology.function.Function;
 import com.ibm.streamsx.topology.function.FunctionContext;
 import com.ibm.streamsx.topology.function.Initializable;
 import com.ibm.streamsx.topology.function.UnaryOperator;
+import com.ibm.streamsx.topology.test.AllowAll;
 import com.ibm.streamsx.topology.test.TestTopology;
 import com.ibm.streamsx.topology.tester.Condition;
 import com.ibm.streamsx.topology.tester.MultiLongCondition;
@@ -74,29 +75,47 @@ public class IsolateTest extends TestTopology {
         TStream<String> ss1 = topology.strings("hello");
         TStream<String> un = ss.union(ss1);
         un.isolate();
-        StreamsContextFactory.getStreamsContext(StreamsContext.Type.TOOLKIT)
-                .submit(topology).get();
+        
+        Tester tester = topology.getTester();
+        
+        Condition<List<String>> hellos = tester.stringContentsUnordered(un, "hello", "hello");
+        complete(topology.getTester());
+        
+        assertTrue(hellos.valid());
     }
 
     @Test
     public void multipleIsolationTest() throws Exception {
         Topology topology = new Topology("multipleIsolationTest");
 
-        TStream<String> ss = topology.strings("hello", "world");
+        TStream<String> ss = topology.strings("hello");
         TStream<String> ss0 = ss.isolate();
         TStream<String> ss1 = ss0.transform(getContainerId());
-        ss1.isolate().transform(getContainerId())
-                .transform(getContainerId()).print();
+        TStream<String> ss8 = ss1.isolate().transform(getContainerId())
+                .transform(getContainerId());
 
         TStream<String> ss3 = ss.transform(getContainerId()).isolate();
         TStream<String> ss4 = ss3.transform(getContainerId()).isolate();
         TStream<String> ss5 = ss4.transform(getContainerId()).isolate();
-        ss5.transform(getContainerId()).print();
+        ss5.transform(getContainerId());
 
         TStream<String> ss7 = ss3.transform(getContainerId());
+        
+        Set<TStream<String>> set = new HashSet<>();
+        set.add(ss1);
+        set.add(ss8);
+        set.add(ss3);
+        set.add(ss4);
+        set.add(ss5);
+        
+        TStream<String> out = ss7.union(set).transform(uniqueStringCounter(6));
+        
+        Tester tester = topology.getTester();
+        Condition<Long> numIsolateRegions =tester.tupleCount(out, 6);
 
-        StreamsContextFactory.getStreamsContext(StreamsContext.Type.TOOLKIT)
-                .submit(topology).get();
+        complete(topology.getTester());
+        
+        assertTrue(numIsolateRegions.valid());
     }
 
     /**
@@ -127,24 +146,31 @@ public class IsolateTest extends TestTopology {
         // Unions a stream with its parent.
         ss7.union(ss4).print();
 
-        StreamsContextFactory.getStreamsContext(StreamsContext.Type.TOOLKIT)
-                .submit(topology).get();
+        complete(topology.getTester());
     }
     
     @Test
     public void islandIsolationTest() throws Exception {
         Topology topology = new Topology("islandIsolationTest");
 
-        TStream<String> ss = topology.strings("hello", "world");
-        ss.transform(getContainerId()).isolate()
+        TStream<String> ss = topology.strings("hello");
+        TStream<String> out1 = ss.transform(getContainerId());
+        TStream<String> out3 = out1.isolate()
                 .transform(getContainerId());
         
         // Create island subgraph
-        TStream<String> ss2 = topology.strings("hello", "world");
-        ss2.transform(getContainerId()).print();
+        TStream<String> ss2 = topology.strings("hello");
+        TStream<String> out2 = ss2.transform(getContainerId());
+        Set<TStream<String>> set = new HashSet<>();
+        set.add(out3);
+        set.add(out2);
+        TStream<String> regionCount = out1.union(set).transform(uniqueStringCounter(3));
         
-        StreamsContextFactory.getStreamsContext(StreamsContext.Type.TOOLKIT)
-        .submit(topology).get();
+        Tester tester = topology.getTester();
+        Condition<Long> expectedCount = tester.tupleCount(regionCount, 3);
+        complete(topology.getTester());
+        
+        assertTrue(expectedCount.valid());
     }
 
     @Test
@@ -164,21 +190,38 @@ public class IsolateTest extends TestTopology {
 
         TStream<String> n = s1.union(l).isolate();
 
-        n.print();
-        n.print();
-        n.print();
-        n.print();
+        TStream<String> out1 = n.filter(new AllowAll<String>());
+        TStream<String> out2 = n.filter(new AllowAll<String>());
+        TStream<String> out3 = n.filter(new AllowAll<String>());
+        TStream<String> out4 = n.filter(new AllowAll<String>());
 
         Tester tester = topology.getTester();
-        Condition<Long> expectedCount = tester.tupleCount(n, 4);
-        Condition<List<String>> expectedContent = tester
-                .stringContentsUnordered(n, "1", "2", "3", "4");
+        Condition<Long> expectedCounts1 = tester.tupleCount(out1, 4);
+        Condition<List<String>> expectedContents1 = tester
+                .stringContentsUnordered(out1, "1", "2", "3", "4");
 
-        StreamsContextFactory.getStreamsContext(StreamsContext.Type.TOOLKIT)
-                .submit(topology).get();
+        Condition<Long> expectedCounts2 = tester.tupleCount(out2, 4);
+        Condition<List<String>> expectedContents2 = tester
+                .stringContentsUnordered(out2, "1", "2", "3", "4");
+        
+        Condition<Long> expectedCounts3 = tester.tupleCount(out3, 4);
+        Condition<List<String>> expectedContents3 = tester
+                .stringContentsUnordered(out3, "1", "2", "3", "4");
+        
+        Condition<Long> expectedCounts4 = tester.tupleCount(out4, 4);
+        Condition<List<String>> expectedContents4 = tester
+                .stringContentsUnordered(out4, "1", "2", "3", "4");
+        
+        complete(topology.getTester());
 
-        // assertTrue(expectedCount.valid());
-        // assertTrue(expectedContent.valid());
+        assertTrue(expectedCounts1.valid());
+        assertTrue(expectedContents1.valid());
+        assertTrue(expectedCounts2.valid());
+        assertTrue(expectedContents2.valid());
+        assertTrue(expectedCounts3.valid());
+        assertTrue(expectedContents3.valid());
+        assertTrue(expectedCounts4.valid());
+        assertTrue(expectedContents4.valid());
     }
     
     @Test(expected = IllegalStateException.class)
@@ -300,5 +343,22 @@ public class IsolateTest extends TestTopology {
             id = functionContext.getContainer().getId();
             channel = functionContext.getChannel();
         }
+    }
+    
+    @SuppressWarnings("serial")
+    public static Function<String, String> uniqueStringCounter(final int count){
+        return new Function<String, String>(){
+            Set<String> hset = new HashSet<>();
+            int _count = 0;
+            @Override
+            public String apply(String v) {
+                _count++;
+                hset.add(v);
+                if(_count == count)
+                    return Integer.toString(hset.size());
+                return null;
+            }
+       
+        };
     }
 }
