@@ -80,7 +80,7 @@ public class IsolateTest extends TestTopology {
         Tester tester = topology.getTester();
         
         Condition<List<String>> hellos = tester.stringContentsUnordered(un, "hello", "hello");
-        complete(topology.getTester());
+        complete(tester, hellos, 60, TimeUnit.SECONDS);
         
         assertTrue(hellos.valid());
     }
@@ -116,7 +116,7 @@ public class IsolateTest extends TestTopology {
         Tester tester = topology.getTester();
         Condition<Long> numIsolateRegions =tester.tupleCount(out, 6);
 
-        complete(topology.getTester());
+        complete(tester, numIsolateRegions, 60, TimeUnit.SECONDS);
         
         assertTrue(numIsolateRegions.valid());
     }
@@ -175,7 +175,7 @@ public class IsolateTest extends TestTopology {
         
         Tester tester = topology.getTester();
         Condition<Long> expectedCount = tester.tupleCount(regionCount, 3);
-        complete(topology.getTester());
+        complete(tester, expectedCount, 60, TimeUnit.SECONDS);
         
         assertTrue(expectedCount.valid());
     }
@@ -192,7 +192,7 @@ public class IsolateTest extends TestTopology {
         TStream<String> s4 = topology.strings("4");
 
         Set<TStream<String>> l = new HashSet<>();
-        l.add(s1);
+        Set<TStream<String>> outSet = new HashSet<>();
         l.add(s2);
         l.add(s3);
         l.add(s4);
@@ -203,6 +203,11 @@ public class IsolateTest extends TestTopology {
         TStream<String> out2 = n.filter(new AllowAll<String>());
         TStream<String> out3 = n.filter(new AllowAll<String>());
         TStream<String> out4 = n.filter(new AllowAll<String>());
+        outSet.add(out2);
+        outSet.add(out3);
+        outSet.add(out4);
+        
+        TStream<String> out_total = s1.union(outSet);
 
         Tester tester = topology.getTester();
         Condition<Long> expectedCounts1 = tester.tupleCount(out1, 4);
@@ -221,7 +226,9 @@ public class IsolateTest extends TestTopology {
         Condition<List<String>> expectedContents4 = tester
                 .stringContentsUnordered(out4, "1", "2", "3", "4");
         
-        complete(topology.getTester());
+        Condition<Long> total_count = tester.tupleCount(out_total, 16);
+        
+        complete(tester, total_count, 60, TimeUnit.SECONDS);
 
         assertTrue(expectedCounts1.valid());
         assertTrue(expectedContents1.valid());
