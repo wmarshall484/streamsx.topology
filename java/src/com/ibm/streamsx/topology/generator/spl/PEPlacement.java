@@ -75,6 +75,7 @@ class PEPlacement {
     private void checkValidColocationRegion(JSONObject isolate, JSONObject graph) {
         final List<JSONObject> isolateChildren = GraphUtilities.getDownstream(
                 isolate, graph);
+	System.out.println("Here");
         List<JSONObject> isoParents = GraphUtilities.getUpstream(isolate, graph);
 
         assertNotIsolated(isoParents);

@@ -45,6 +45,21 @@ public class GraphUtilities {
         return kindOperators;
     }
 
+    
+    static JSONObject findOperatorByName(String name,
+            JSONObject graph) {
+        JSONArray ops = (JSONArray) graph.get("operators");
+        for (int k = 0; k < ops.size(); k++) {
+            JSONObject op = (JSONObject) (ops.get(k));
+            if (name.equals((String)op.get("name"))) {
+                return op;
+            }
+        }
+        return null;
+    }
+
+
+
     /**
      * Get all operators immediately downstream of the {@code visitOp}
      * operator. No exceptions are made for marker operators. 
@@ -105,6 +120,7 @@ public class GraphUtilities {
      */
     public static List<JSONObject> getUpstream(JSONObject visitOp,
             JSONObject graph) {
+	System.out.println("visitop: " + visitOp.toString());
         List<JSONObject> uniqueParents = new ArrayList<>();
         Set<JSONObject> parents = new HashSet<>();
         JSONArray inputs = (JSONArray) visitOp.get("inputs");
@@ -135,6 +151,8 @@ public class GraphUtilities {
             }
         }
         uniqueParents.addAll(parents);
+	for(JSONObject uniqueParent : uniqueParents)
+		System.out.println("uniqueParent " + uniqueParent.toString());
         return uniqueParents;
     }
     
@@ -323,30 +341,37 @@ public class GraphUtilities {
     public static void visitOnce(VisitController visitController,
             List<JSONObject> starts, JSONObject graph,
             Consumer<JSONObject> consumer) {
-        Set<JSONObject> visited = new HashSet<JSONObject>();
-        List<JSONObject> unvisited = new ArrayList<JSONObject>();
+        Set<String> visited = new HashSet<String>();
+        Set<String> unvisited = new HashSet<String>();
         if (visitController == null)
             visitController = new VisitController();
 
-
-        unvisited.addAll(starts);
+  
+	for(JSONObject start : starts){
+            unvisited.add((String)start.get("name"));
+	    System.out.println("just added " + (String)start.get("name"));
+	    System.out.println("Start : " + start.toString());
+	}
 
         while (unvisited.size() > 0) {
-            JSONObject op = unvisited.get(0);
-            // Modify and THEN add to hashSet as to not break the hashCode of
+            String opName = (String)(unvisited.toArray()[0]);
+            try{
+	        JSONObject op = findOperatorByName(opName, graph);
+            }catch(Exception e){ e.printStackTrace();}
+	    // Modify and THEN add to hashSet as to not break the hashCode of
             // the object in the hashSet.
             if (visitController.stopped())
                 return;
             consumer.accept(op);
-            visited.add(op);  
+            visited.add(opName);  
             GraphUtilities.getUnvisitedAdjacentNodes(visitController, visited,
                     unvisited, op, graph);
-            unvisited.remove(0);
+            unvisited.remove(op);
         }
     }
 
     static void getUnvisitedAdjacentNodes(
-            Collection<JSONObject> visited, Collection<JSONObject> unvisited,
+            Collection<String> visited, Collection<String> unvisited,
             JSONObject op, JSONObject graph, Set<BVirtualMarker> boundaries) {
         getUnvisitedAdjacentNodes(new VisitController(Direction.BOTH, boundaries),
                 visited, unvisited, op, graph);
@@ -354,7 +379,7 @@ public class GraphUtilities {
 
     static void getUnvisitedAdjacentNodes(
             VisitController visitController,
-            Collection<JSONObject> visited, Collection<JSONObject> unvisited,
+            Collection<String> visited, Collection<String> unvisited,
             JSONObject op, JSONObject graph) {
         
         Direction direction = visitController.direction();
@@ -376,13 +401,15 @@ public class GraphUtilities {
                             graph));
                 }
             }
-            visited.addAll(operatorParents);
+            
+            for(JSONObject operatorParent : operatorParents)
+                visited.add((String)operatorParent.get("name"));
             parents.removeAll(operatorParents);
     
             removeVisited(allOperatorChildren, visited);
             parents.addAll(allOperatorChildren);
-    
-            unvisited.addAll(parents);
+            for(JSONObject parent : parents)
+                unvisited.add((String)parent.get("name"));
         }
 
         // --- Process children ---
@@ -396,27 +423,30 @@ public class GraphUtilities {
                             graph));
                 }
             }
-            visited.addAll(childrenToRemove);
+            for(JSONObject childToRemove : childrenToRemove){
+                visited.add((String)childToRemove.get("name"));
+            }
             children.removeAll(childrenToRemove);
     
             removeVisited(allOperatorParents, visited);
             children.addAll(allOperatorParents);
-    
-            unvisited.addAll(children);
+            for(JSONObject child : children)
+                unvisited.add((String)child.get("name"));
         }
     }
 
     private static void removeVisited(Collection<JSONObject> ops,
-            Collection<JSONObject> visited) {
+            Collection<String> visited) {
         Iterator<JSONObject> it = ops.iterator();
         // Iterate in this manner to preserve list structure while deleting
         while (it.hasNext()) {
             JSONObject op = it.next();
-            if (visited.contains(op)) {
+            if (visited.contains((String)op.get("name"))) {
                 it.remove();
             }
         }
     }
+
 
     private static boolean equalsAny(Set<BVirtualMarker> boundaries, String opKind) {
         if(boundaries == null){

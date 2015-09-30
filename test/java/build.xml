@@ -137,7 +137,7 @@
        <batchtest todir="${topology.test.dir}">
           <fileset dir="${basedir}/src" 
           	 excludes="**/samples/*Test.java,**/test/messaging/" >
-             <include name="**/*Test.java"/>
+             <include name="**/*IsolateTest.java"/>
           </fileset>
        </batchtest>
      </junit>
