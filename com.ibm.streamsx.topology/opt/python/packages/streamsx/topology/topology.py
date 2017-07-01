@@ -1215,3 +1215,26 @@ class Window(object):
         else:
             raise ValueError(when)
         return tw
+
+    def aggregate(self, function):
+        """Declares a function or callable to aggregate the contents of
+        the window when it is triggered.
+
+        The supplied function is passed a list containing the contents
+        of the window. The return values of the function are passed as
+        the tuples on the returned `stream`. For example, a window that
+        calculates a moving average of the last  10 tuples could be
+        written as follows:
+        
+            win = s.last(10).trigger(1)
+            moving_averages = win.aggregate(lambda tuples: sum(tuples)/len(tuples))
+
+        
+        Args:
+            function: The function which aggregates the contents of 
+            the window
+
+        Returns:
+            Stream: A `Stream` of the returned values of the supplied functin.
+        """
+        
