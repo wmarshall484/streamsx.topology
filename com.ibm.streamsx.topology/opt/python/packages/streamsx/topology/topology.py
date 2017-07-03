@@ -1244,10 +1244,10 @@ class Window(object):
 
         
         sl = _SourceLocation(_source_info(), "window")
-        name = self.topology.graph._requested_name(name, action="window", func=func)
-        op = self.topology.graph.addOperator(self.topology.opnamespace+"::CCWindow", func, name=name, sl=sl)
-        op.addInputPort(outputPort=self.oport, name=self.name)
-        oport = op.addOutputPort(schema=self.oport.schema, name=name)
+        name = self.topology.graph._requested_name(name, action="window", func=function)
+        op = self.topology.graph.addOperator(self.topology.opnamespace+"::CCWindow", function, name=name, sl=sl)
+        op.addInputPort(outputPort=self.stream.oport, name=self.stream.name)
+        oport = op.addOutputPort(schema=self.stream.oport.schema, name=name)
 
         op.params['evictConfig'] = self._config['evictConfig']
         op.params['triggerConfig'] = self._config['triggerConfig']
