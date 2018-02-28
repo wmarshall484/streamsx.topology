@@ -1,30 +1,44 @@
 package com.ibm.streamsx.topology.generator.spl;
 
+import java.util.HashSet;
 import java.util.Set;
 
 import com.google.gson.JsonObject;
 
-public class GCompositeDefImpl implements GCompositeDef {
-    JsonObject graph;
+public class GCompositeDefImpl implements GCompositeDef{
+    GIndex globalIndex;
+    Set<JsonObject> operators = new HashSet<>();
     
-    public GCompositeDefImpl(JsonObject graph) {
-        this.graph = graph;
-        
-        //TODO build indexes to speed up upstream/downstream search.
+    public GCompositeDefImpl(GIndex globalIndex, Set<JsonObject> ops) {
+        this.globalIndex = globalIndex;
+        this.operators = ops;
     }
 
     @Override
     public JsonObject getGraph() {
-        return this.graph;
+        return this.globalIndex.getGraph();
     }
 
     @Override
     public Set<JsonObject> getUpstream(JsonObject op) {
-        return GraphUtilities.getUpstream(op, graph);
+        Set<JsonObject> us = this.globalIndex.getUpstream(op);
+        
+        // Remove operators that are not in the composite.
+        us.removeIf(us_op -> !operators.contains(us_op));
+        return us;
     }
     
     @Override
     public Set<JsonObject> getDownstream(JsonObject op) {
-        return GraphUtilities.getDownstream(op, graph);
+        Set<JsonObject> ds = this.globalIndex.getDownstream(op);
+        
+        // Remove operators that are not in the composite.
+        ds.removeIf(ds_op -> !operators.contains(ds_op));
+        return ds;
+    }
+
+    @Override
+    public GIndex getGlobalIndex() {
+        return this.globalIndex;
     }
 }

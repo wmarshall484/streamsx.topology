@@ -121,7 +121,7 @@ public class GraphUtilities {
      * @param visitOp The operator for which all immediate downstream 
      * operators should be returned.
      * @param graph The graph JSONObject in which {@code visitOp} resides.
-     * @return A list of all operators immediately downstream from {@code visitOp}
+     * @return A set of all operators immediately downstream from {@code visitOp}
      */
     /*
     static Set<JSONObject> getDownstream(JSONObject _visitOp,
@@ -192,7 +192,7 @@ public class GraphUtilities {
      * @param visitOp The operator for which all immediate upstream 
      * operators should be returned.
      * @param graph The graph JSONObject in which {@code visitOp} resides.
-     * @return A list of all operators immediately upstream from {@code visitOp}
+     * @return A set of all operators immediately upstream from {@code visitOp}
      */
     /*
     public static Set<JSONObject> getUpstream(JSONObject _visitOp,
