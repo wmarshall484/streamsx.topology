@@ -141,25 +141,6 @@ class Preprocessor {
         }
     }
     
-    @SuppressWarnings("serial")
-    private void relocateHashAdders(){
-        final Set<JsonObject> hashAdders = new HashSet<>();
-        // Firstly, find each hashAdder
-        GraphUtilities.visitOnce(GraphUtilities.findStarts(gcomp.getGraph()), new HashSet<BVirtualMarker>(), gcomp, new Consumer<JsonObject>(){
-            public void accept(JsonObject op) {
-                if(jstring(op, "kind").equals("com.ibm.streamsx.topology.functional.java::HashAdder")){
-                    hashAdders.add(op);
-                }
-            }
-        });
-        
-        assertValidParallelUnions(hashAdders); 
-        for(JsonObject hashAdder : hashAdders){
-            relocateHashAdder(hashAdder);
-        }
-        
-    }
-    
     private void assertValidParallelUnions(Set<JsonObject> hashAdders) {   
         for(JsonObject hashAdder : hashAdders){
             Set<JsonObject> hashAdderParents = gcomp.getUpstream(hashAdder);
@@ -192,81 +173,4 @@ class Preprocessor {
         }
     }
 
-    private void relocateHashAdder(JsonObject hashAdder){
-        int numHashAdderCopies = 0;
-        int numHashRemoverCopies = 0;
-        String routing = GsonUtilities.jstring(hashAdder, "routing");
-
-        // The hashremover object
-        // hashAdder -> $Parallel$ -> $Isolate -> hashremover
-        JsonObject hashRemover = gcomp.getDownstream(hashAdder).iterator().next();
-        hashRemover = gcomp.getDownstream(hashRemover).iterator().next();
-        hashRemover = gcomp.getDownstream(hashRemover).iterator().next();
-        
-        Set<JsonObject> children = gcomp.getDownstream(hashAdder);
-        Set<JsonObject> parents = gcomp.getUpstream(hashAdder);
-        
-        JsonObject parallelStart = children.iterator().next();
-        
-        String inputPortName = GraphUtilities.getInputPortName(hashAdder, 0);
-        String parallelInputPortName = GraphUtilities.getInputPortName(parallelStart, 0);
-        
-        List<JsonObject> unparallelParents = new ArrayList<>();
-        List<JsonObject> nonUnparallelParents = new ArrayList<>();
-
-        // Check whether a hashAdder has already been added before
-        // the unparallel. If it has, remove it.
-        for(JsonObject parent : parents){
-            if(jstring(parent, "kind").equals(BVirtualMarker.END_PARALLEL.kind())){
-                JsonObject upstreamOfUnparallelOp = gcomp.getUpstream(parent).iterator().next();
-		// Need to jump over the auto-inserted $isolate operator
-		upstreamOfUnparallelOp = gcomp.getUpstream(upstreamOfUnparallelOp).iterator().next();
-                if(!(jstring(upstreamOfUnparallelOp, "kind")).equals("com.ibm.streamsx.topology.functional.java::HashAdder")){
-                    if(!unparallelParents.contains(parent)){
-                        unparallelParents.add(parent);
-                    }
-                }
-            }
-            else{
-                if(!nonUnparallelParents.contains(parent)){
-                    nonUnparallelParents.add(parent);
-                }
-            }
-        }
-        if(unparallelParents.size() == 0)
-            return;
-        
-        for (JsonObject unparallelParent : unparallelParents) {
-            // Add hashadder before unparallel
-            JsonObject hashAdderCopy = GraphUtilities.copyOperatorNewName(hashAdder,
-                    jstring(hashAdder, "name") + "_" + Integer.toString(numHashAdderCopies++));
-            JsonObject isolateOp = gcomp.getUpstream(unparallelParent).iterator().next();
-            GraphUtilities.addBefore(isolateOp, hashAdderCopy, gcomp);
-        }
-        
-        for(JsonObject nonUnparallelParent : nonUnparallelParents){
-            // Add hashadder after the nonUnparallelParent
-            JsonObject hashAdderCopy = GraphUtilities.copyOperatorNewName(hashAdder, 
-                    jstring(hashAdder, "name") + "_"+Integer.toString(numHashAdderCopies++));
-            GraphUtilities.addBetween(nonUnparallelParent, hashAdder, hashAdderCopy);
-            gcomp.getGraph().get("operators").getAsJsonArray().add(hashAdderCopy);
-        }
-        
-        // Get non-parallel, non hashremover children of unparallel regions and add 
-        // a hashRemover between each.
-        for(JsonObject unparallelParent : unparallelParents){
-            Set<JsonObject> unparallelParentChildren = gcomp.getDownstream(unparallelParent);
-            for(JsonObject unparallelParentChild : unparallelParentChildren){
-                if(!jstring(unparallelParentChild, "kind").equals("com.ibm.streamsx.topology.functional.java::HashRemover")
-		    && !jstring(unparallelParentChild,"kind").equals("com.ibm.streamsx.topology.functional.java::HashAdder")
-                    && !jstring(unparallelParentChild,"kind").equals("$Parallel$")){
-                    JsonObject hashRemoverCopy = GraphUtilities.copyOperatorNewName(hashRemover, 
-                            jstring(hashRemover, "name") + "_"+Integer.toString(numHashRemoverCopies++));
-                    GraphUtilities.addBetween(unparallelParent, unparallelParentChild, hashRemoverCopy);
-                    gcomp.getGraph().get("operators").getAsJsonArray().add(hashRemoverCopy);
-                }
-            }
-        }
-	GraphUtilities.removeOperator(hashAdder, gcomp);
-    }
 }

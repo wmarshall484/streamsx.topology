@@ -521,21 +521,21 @@ public class GraphUtilities {
      */
     static void addBefore(JsonObject op, JsonObject addOp, GCompositeDef gcomp){        
         for(JsonObject parent : gcomp.getUpstream(op)){
-            addBetween(parent, op, addOp);
+            addBetween(parent, op, addOp, gcomp);
         } 
         gcomp.getGraph().get("operators").getAsJsonArray().add(addOp);
     }
     
-    static void addBetween(JsonObject parent, JsonObject child, JsonObject op){
+    static void addBetween(JsonObject parent, JsonObject child, JsonObject op, GCompositeDef gcomp){
         List<JsonObject> parentList = new ArrayList<>();
         List<JsonObject> childList = new ArrayList<>();
         parentList.add(parent);
         childList.add(child);
         
-        addBetween(parentList, childList, op);     
+        addBetween(parentList, childList, op, gcomp);     
     }
     
-	static void addBetween(List<JsonObject> parents, List<JsonObject> children, JsonObject op){
+	static void addBetween(List<JsonObject> parents, List<JsonObject> children, JsonObject op, GCompositeDef gcomp){
         for(JsonObject parent : parents){
             for(JsonObject child : children){      
                 JsonArray outputs = parent.get("outputs").getAsJsonArray();
