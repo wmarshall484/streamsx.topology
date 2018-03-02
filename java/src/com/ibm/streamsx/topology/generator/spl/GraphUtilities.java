@@ -131,6 +131,43 @@ public class GraphUtilities {
     }
     */
     
+    static Set<JsonObject> getDownstreamFromPort(JsonObject outputPort,
+            JsonObject graph){
+        Set<JsonObject> ds = new HashSet<>();
+        String oportName = jstring(outputPort, "name");
+        
+        // Given the unique output port name, search the entire graph for 
+        // operators that have an input port with a matching connection.
+        // If found, add to the set.
+        operators(graph, op -> {
+            inputConnections(op, conn -> {
+                if(conn == oportName)
+                    ds.add(op);
+            });
+        });
+        
+        return ds;       
+    }
+    
+    static Set<JsonObject> getUpstreamFromPort(JsonObject inputPort,
+            JsonObject graph){
+        Set<JsonObject> us = new HashSet<>();
+        Set<String> oportNames = new HashSet<>();
+        stringArray(inputPort, "connections", conn -> oportNames.add(conn));
+        
+        // Given a list of output port names to which the given input port is 
+        // attached, search the graph and keep track of the operators that have
+        // and output port with one of the names.
+        operators(graph, op -> {
+            outputConnections(op, conn -> {
+                if(oportNames.contains(conn))
+                    us.add(op);
+            });
+        });
+        
+        return us;
+    }
+    
     static Set<JsonObject> getDownstream(JsonObject visitOp,
             JsonObject graph) {    
         
@@ -150,37 +187,6 @@ public class GraphUtilities {
         });
 
         return children;
-        /*
-        Set<JSONObject> children = new HashSet<>();
-        JSONArray outputs = (JSONArray) visitOp.get("outputs");
-        if (outputs == null || outputs.isEmpty()) {
-            return children;
-        }
-
-        for (Object _out : outputs) {
-            JSONArray connections = (JSONArray) ((JSONObject) _out)
-                    .get("connections");
-            for (Object _conn : connections) {
-                String inputPort = (String) _conn;
-                // TODO: build index instead of iterating through graph each
-                // time
-                JSONArray ops = (JSONArray) graph.get("operators");
-                for (Object _op : ops) {
-                    JSONObject op = (JSONObject) _op;
-                    JSONArray inputs = (JSONArray) op.get("inputs");
-                    if (inputs != null && !inputs.isEmpty()) {
-                        for (Object _input : inputs) {
-                            String name = (String) ((JSONObject) _input).get("name");
-                            if (name.equals(inputPort)) {
-                                children.add(op);
-                            }
-                        }
-                    }
-                }
-            }
-        }
-        return children;
-        */
     }
 
     /**
